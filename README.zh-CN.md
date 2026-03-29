@@ -4,7 +4,7 @@
 [![license](https://img.shields.io/github/license/RuochenLyu/bangumi-renamer)](LICENSE)
 [![node](https://img.shields.io/node/v/bangumi-renamer)](package.json)
 
-使用 [TMDB](https://www.themoviedb.org/) 元数据将动漫/剧集/电影文件重命名为 [Infuse](https://firecore.com/infuse) 兼容格式。
+使用 [TMDB](https://www.themoviedb.org/) 元数据重命名动漫/剧集/电影文件。兼容 Infuse、Plex、Emby、Jellyfin、Kodi 等主流媒体播放器的命名规范。
 
 [English](README.md)
 

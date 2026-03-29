@@ -4,7 +4,7 @@
 [![license](https://img.shields.io/github/license/RuochenLyu/bangumi-renamer)](LICENSE)
 [![node](https://img.shields.io/node/v/bangumi-renamer)](package.json)
 
-Rename anime/TV/movie files to [Infuse](https://firecore.com/infuse)-compatible naming using [TMDB](https://www.themoviedb.org/) metadata.
+Rename anime/TV/movie files using [TMDB](https://www.themoviedb.org/) metadata. Works with Infuse, Plex, Emby, Jellyfin, Kodi, and other media players that follow standard naming conventions.
 
 [中文文档](README.zh-CN.md)
 
