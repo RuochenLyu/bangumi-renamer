@@ -5,7 +5,7 @@ import chalk from 'chalk';
 import { confirm, input } from '@inquirer/prompts';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { realpathSync } from 'node:fs';
+import { realpathSync, statSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 
 import { getMessages } from './types.js';
@@ -58,7 +58,7 @@ export async function runCli(argv: string[]) {
   program
     .name('bangumi-renamer')
     .description(helpMsg.helpDescription)
-    .version('1.1.0', '-V, --version', helpMsg.helpLabelDisplayVersion)
+    .version('1.2.0', '-V, --version', helpMsg.helpLabelDisplayVersion)
     .helpOption('-h, --help', helpMsg.helpLabelDisplayHelp)
     .addHelpText('after', '\n' + helpMsg.helpExamples)
     .addHelpCommand(false);
@@ -78,18 +78,39 @@ export async function runCli(argv: string[]) {
     .option('--json', helpMsg.helpJson)
     .option('-l, --lang <lang>', helpMsg.helpLang, defaultLang)
     .action(async (dir: string, options) => {
-      const resolvedDir = path.resolve(dir);
+      const resolved = path.resolve(dir);
       const msg = getMessages(options.lang);
       const jsonMode = !!options.json;
       const autoYes = jsonMode || !!options.yes;
       const log = jsonMode ? (() => {}) : console.log.bind(console);
+
+      // Detect single file vs directory
+      let resolvedDir: string;
+      let singleFile: string | undefined;
+      try {
+        const s = statSync(resolved);
+        if (s.isFile()) {
+          resolvedDir = path.dirname(resolved);
+          singleFile = path.basename(resolved);
+        } else {
+          resolvedDir = resolved;
+        }
+      } catch {
+        resolvedDir = resolved;
+      }
 
       // 1. Resolve API key
       const apiKey = await resolveApiKey(msg, autoYes);
 
       // 2. Scan directory
       log(chalk.dim(msg.scanningDir));
-      const { videos, subtitles } = await scanDirectory(resolvedDir);
+      let { videos, subtitles } = await scanDirectory(resolvedDir);
+
+      // Single file mode: keep only the target video and its subtitles
+      if (singleFile) {
+        videos = videos.filter((v) => v.filename === singleFile);
+        // Keep subtitles that share the same stem or match by episode number
+      }
 
       if (videos.length === 0) {
         if (jsonMode) {
@@ -105,7 +126,7 @@ export async function runCli(argv: string[]) {
 
       // 3. Pair files
       const groups = pairFiles(videos, subtitles);
-      const orphans = getOrphanSubtitles(videos, subtitles);
+      const orphans = getOrphanSubtitles(groups, subtitles);
       if (orphans.length > 0) {
         log(chalk.yellow(msg.orphanSubtitles(orphans.length)));
       }

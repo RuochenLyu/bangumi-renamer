@@ -8,11 +8,6 @@ export const SUBTITLE_EXTENSIONS = new Set([
   '.ass', '.ssa', '.srt', '.sub', '.sup', '.vtt',
 ]);
 
-export const KNOWN_LANG_SUFFIXES = new Set([
-  'zh-cn', 'zh-tw', 'zh-hans', 'zh-hant', 'zh',
-  'en', 'ja', 'ko', 'fr', 'de', 'es', 'it', 'pt', 'ru', 'ar', 'th', 'vi',
-  'default', 'forced', 'sdh', 'cc',
-]);
 
 export interface MediaFile {
   /** Absolute path */

@@ -3,10 +3,12 @@ import path from 'node:path';
 import {
   VIDEO_EXTENSIONS,
   SUBTITLE_EXTENSIONS,
-  KNOWN_LANG_SUFFIXES,
   type MediaFile,
   type MediaFileGroup,
 } from './types.js';
+
+/** Matches language-like suffixes: 2-10 letters, optionally hyphen-separated (e.g. zh-cn, jpsc, forced) */
+const LANG_SUFFIX_PATTERN = /^[a-z]{2,10}(-[a-z]{2,10})*$/;
 
 /**
  * Parse a subtitle filename to extract the language suffix and the "stem" (base name without lang + ext).
@@ -38,7 +40,7 @@ export function parseSubtitleFilename(filename: string): {
   const lastDot = withoutExt.lastIndexOf('.');
   if (lastDot > 0) {
     const possibleLang = withoutExt.slice(lastDot + 1).toLowerCase();
-    if (KNOWN_LANG_SUFFIXES.has(possibleLang)) {
+    if (LANG_SUFFIX_PATTERN.test(possibleLang)) {
       return {
         ext,
         langSuffix: possibleLang,
@@ -140,20 +142,71 @@ export async function scanDirectory(dir: string): Promise<{ videos: MediaFile[];
 }
 
 /**
+ * Extract episode number from a filename stem.
+ * Tries patterns in order of specificity:
+ *   S01E13 → EP13 → " - 13" → trailing number
+ */
+export function extractEpisodeNumber(stem: string): number | undefined {
+  const sxe = stem.match(/S\d+E(\d+)/i);
+  if (sxe) return parseInt(sxe[1], 10);
+
+  const ep = stem.match(/EP(\d+)/i);
+  if (ep) return parseInt(ep[1], 10);
+
+  const dash = stem.match(/\s-\s(\d+)(?:\s|$|\[)/);
+  if (dash) return parseInt(dash[1], 10);
+
+  const trailing = stem.match(/[\s.](\d+)$/);
+  if (trailing) return parseInt(trailing[1], 10);
+
+  return undefined;
+}
+
+/**
  * Pair videos with their subtitle files.
- * Strategy: subtitle stem must match video stem exactly.
- * Each video can have multiple subtitles (different languages).
+ * Phase 1: exact stem match.
+ * Phase 2: episode-number fallback for orphan subtitles.
  */
 export function pairFiles(videos: MediaFile[], subtitles: MediaFile[]): MediaFileGroup[] {
   const groups: MediaFileGroup[] = [];
 
   if (videos.length === 1) {
-    // Single video: assign all subtitles to it
     groups.push({ video: videos[0], subtitles: [...subtitles] });
-  } else {
-    for (const video of videos) {
-      const matched = subtitles.filter((sub) => sub.stem === video.stem);
-      groups.push({ video, subtitles: matched });
+    return groups;
+  }
+
+  // Phase 1: exact stem match
+  const matchedIndices = new Set<number>();
+  for (const video of videos) {
+    const matched: MediaFile[] = [];
+    for (let i = 0; i < subtitles.length; i++) {
+      if (subtitles[i].stem === video.stem) {
+        matched.push(subtitles[i]);
+        matchedIndices.add(i);
+      }
+    }
+    groups.push({ video, subtitles: matched });
+  }
+
+  // Phase 2: episode-number fallback for orphans
+  const orphans = subtitles.filter((_, i) => !matchedIndices.has(i));
+  if (orphans.length > 0) {
+    const epToGroup = new Map<number, number>();
+    for (let i = 0; i < groups.length; i++) {
+      const ep = extractEpisodeNumber(groups[i].video.stem);
+      if (ep !== undefined && !epToGroup.has(ep)) {
+        epToGroup.set(ep, i);
+      }
+    }
+
+    for (const sub of orphans) {
+      const ep = extractEpisodeNumber(sub.stem);
+      if (ep !== undefined) {
+        const idx = epToGroup.get(ep);
+        if (idx !== undefined) {
+          groups[idx].subtitles.push(sub);
+        }
+      }
     }
   }
 
@@ -161,9 +214,14 @@ export function pairFiles(videos: MediaFile[], subtitles: MediaFile[]): MediaFil
 }
 
 /**
- * Get orphan subtitles that don't match any video.
+ * Get orphan subtitles not assigned to any video group.
  */
-export function getOrphanSubtitles(videos: MediaFile[], subtitles: MediaFile[]): MediaFile[] {
-  const videoStems = new Set(videos.map((v) => v.stem));
-  return subtitles.filter((sub) => !videoStems.has(sub.stem));
+export function getOrphanSubtitles(groups: MediaFileGroup[], subtitles: MediaFile[]): MediaFile[] {
+  const paired = new Set<string>();
+  for (const group of groups) {
+    for (const sub of group.subtitles) {
+      paired.add(sub.path);
+    }
+  }
+  return subtitles.filter((sub) => !paired.has(sub.path));
 }
