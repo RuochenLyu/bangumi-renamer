@@ -8,6 +8,8 @@
 
 [English](README.md)
 
+![screenshot](https://raw.githubusercontent.com/RuochenLyu/bangumi-renamer/main/assets/screenshot-zh.png)
+
 ## 功能
 
 - **剧集/动漫**：重命名为 `作品名 - S01E01 - 集标题.ext`

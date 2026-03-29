@@ -8,6 +8,8 @@ Rename anime/TV/movie files to [Infuse](https://firecore.com/infuse)-compatible 
 
 [中文文档](README.zh-CN.md)
 
+![screenshot](https://raw.githubusercontent.com/RuochenLyu/bangumi-renamer/main/assets/screenshot-en.png)
+
 ## Features
 
 - **TV/Anime**: Renames to `Show Name - S01E01 - Episode Title.ext`
